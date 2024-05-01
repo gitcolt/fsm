@@ -1,3 +1,4 @@
+#define FSM_IMPL
 #include "../fsm.h"
 
 #include <stdio.h>
