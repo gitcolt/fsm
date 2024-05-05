@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #define MAX_STATES 10
+#define MAX_TRANSITIONS_PER_STATE 3
 
 typedef struct {
     int event;
@@ -17,7 +18,8 @@ typedef struct {
 
 typedef struct {
     int id;
-    Transition transition;
+    Transition transitions[MAX_TRANSITIONS_PER_STATE];
+    size_t transitions_sz;
     void (*on_exit)(void *ctx);
     void (*on_entry)(void *ctx);
 } State;
@@ -25,7 +27,8 @@ typedef struct {
 typedef struct {
     int id;
     int idx;
-    _Transition transition;
+    _Transition transitions[MAX_TRANSITIONS_PER_STATE];
+    size_t transitions_sz;
     void (*on_exit)(void *ctx);
     void (*on_entry)(void *ctx);
 } _State;

@@ -22,20 +22,27 @@ void fsm_init(FSM *fsm, State *states, size_t states_sz, int initial_state_id) {
     }
     for (size_t i = 0; i < states_sz; ++i) {
         State *state = &states[i];
-        _Transition *fsm_transition = &fsm->states[i].transition;
-        fsm_transition->event = state->transition.event;
-        int target_state_id = state->transition.target_state_id;
-        int found_target_state = 0;
-        for (size_t j = 0; j < states_sz; ++j) {
-            if (states[j].id == target_state_id) {
-                fsm_transition->target_state_idx = j;
-                found_target_state = 1;
-                break;
+
+        for (size_t j = 0; j < state->transitions_sz; ++j) {
+            Transition *src_trans = &state->transitions[j];
+            _Transition *dst_trans = &fsm->states[i].transitions[j];
+
+            dst_trans->event = src_trans->event;
+
+            int found_target_state = 0;
+            for (int k = 0; k < states_sz; ++k) {
+                if (states[k].id == src_trans->target_state_id) {
+                    dst_trans->target_state_idx = k;
+                    found_target_state = 1;
+                    break;
+                }
             }
-        }
-        if (!found_target_state) {
-            fprintf(stderr, "Could not find target state with id %d\n", target_state_id);
-            exit(EXIT_FAILURE);
+            if (!found_target_state) {
+                fprintf(stderr,
+                        "Could not find target state with id %d\n",
+                        src_trans->target_state_id);
+                exit(EXIT_FAILURE);
+            }
         }
     }
 }
@@ -43,14 +50,17 @@ void fsm_init(FSM *fsm, State *states, size_t states_sz, int initial_state_id) {
 void fsm_event(FSM *fsm, int ev) {
     _State *curr_state = fsm->curr_state;
 
-    if (ev == curr_state->transition.event) {
-        if (curr_state->on_exit)
-            curr_state->on_exit(fsm->ctx);
-        _State *next_state = &fsm->states[curr_state->transition.target_state_idx];
-        fsm->curr_state = next_state;
-        if (next_state->on_entry)
-            next_state->on_entry(fsm->ctx);
-        return;
+    for (int i = 0; i < curr_state->transitions_sz; ++i) {
+        _Transition transition = curr_state->transitions[i];
+        if (transition.event == ev) {
+            if (curr_state->on_exit)
+                curr_state->on_exit(fsm->ctx);
+            _State *next_state = &fsm->states[transition.target_state_idx];
+            fsm->curr_state = next_state;
+            if (next_state->on_entry)
+                next_state->on_entry(fsm->ctx);
+            return;
+        }
     }
     fprintf(stderr,
             "No matching transition found for current state %d with event id %d\n",

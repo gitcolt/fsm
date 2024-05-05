@@ -54,9 +54,9 @@ void entering_yel_state_func() {
 int main() {
     FSM traffic_light_fsm;
     State states[] = {
-        { .id = ST_GRN, .transition = { .event = EV_GRN_TO_YEL, .target_state_id = ST_YEL, },                                      },
-        { .id = ST_RED, .transition = { .event = EV_RED_TO_GRN, .target_state_id = ST_GRN, }, .on_exit  = exiting_red_state_func,  },
-        { .id = ST_YEL, .transition = { .event = EV_YEL_TO_RED, .target_state_id = ST_RED, }, .on_entry = entering_yel_state_func, },
+        { .id = ST_GRN, .transitions = { { .event = EV_GRN_TO_YEL, .target_state_id = ST_YEL, } }, .transitions_sz = 1,                                      },
+        { .id = ST_RED, .transitions = { { .event = EV_RED_TO_GRN, .target_state_id = ST_GRN, } }, .transitions_sz = 1, .on_exit  = exiting_red_state_func,  },
+        { .id = ST_YEL, .transitions = { { .event = EV_YEL_TO_RED, .target_state_id = ST_RED, } }, .transitions_sz = 1, .on_entry = entering_yel_state_func, },
     };
 
     fsm_init(&traffic_light_fsm, states, ARRLEN(states), ST_RED);
