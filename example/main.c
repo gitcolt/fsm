@@ -4,8 +4,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define ARRLEN(arr) sizeof(arr) / sizeof(*(arr))
+
+#define LIGHT_TIMEOUT 1
 
 enum State {
     ST_GRN,
@@ -27,59 +31,119 @@ char *state_to_str(char *dst, enum State state) {
 }
 
 enum Event {
-    EV_YEL_TO_RED,
-    EV_RED_TO_GRN,
-    EV_GRN_TO_YEL,
-    EV_ERR,
+    EV_YEL_TIMEOUT,
+    EV_RED_TIMEOUT,
+    EV_GRN_TIMEOUT,
+    EV_ERR_DETECTED,
+    EV_ERR_FIXED,
 };
 
 char *event_to_str(char *dst, enum Event event) {
     switch (event) {
-        case EV_YEL_TO_RED: strcpy(dst, "YELLOW to RED"); break;
-        case EV_RED_TO_GRN: strcpy(dst, "RED to GREEN"); break;
-        case EV_GRN_TO_YEL: strcpy(dst, "GREEN to YELLOW"); break;
-        case EV_ERR: strcpy(dst, "ERROR"); break;
+        case EV_YEL_TIMEOUT: strcpy(dst, "YELLOW TIMEOUT"); break;
+        case EV_RED_TIMEOUT: strcpy(dst, "RED TIMEOUT"); break;
+        case EV_GRN_TIMEOUT: strcpy(dst, "GREEN TIMEOUT"); break;
+        case EV_ERR_DETECTED: strcpy(dst, "ERROR DETECTED"); break;
+        case EV_ERR_FIXED: strcpy(dst, "ERROR FIXED"); break;
     }
     return dst;
 }
 
-void exiting_red_state_func() {
-    printf("exiting RED state\n");
+static FSM traffic_light_fsm = {};
+
+void on_entry_green(void *ctx) {
+    printf("GREEN\n");
+    sleep(LIGHT_TIMEOUT);
+    fsm_event(&traffic_light_fsm, EV_GRN_TIMEOUT);
 }
 
-void entering_yel_state_func() {
-    printf("entering YELLOW state\n");
+void on_entry_yellow(void *ctx) {
+    printf("YELLOW\n");
+    sleep(LIGHT_TIMEOUT);
+    fsm_event(&traffic_light_fsm, EV_YEL_TIMEOUT);
 }
+
+void on_entry_red(void *ctx) {
+    printf("RED\n");
+    sleep(LIGHT_TIMEOUT);
+
+    if (rand() % 3 == 0)
+        fsm_event(&traffic_light_fsm, EV_ERR_DETECTED);
+    else
+        fsm_event(&traffic_light_fsm, EV_RED_TIMEOUT);
+}
+
+void on_entry_error(void *ctx) {
+    printf("ERROR DETECTED\n");
+    sleep(3);
+    fsm_event(&traffic_light_fsm, EV_ERR_FIXED);
+}
+
+void on_exit_error(void *ctx) {
+    printf("ERROR FIXED\n");
+}
+
+static State states[] = {
+    {
+        .id = ST_GRN,
+        .transitions = {
+            {
+                .event = EV_GRN_TIMEOUT,
+                .target_state_id = ST_YEL,
+            },
+            {
+                .event = EV_ERR_DETECTED,
+                .target_state_id = ST_YEL,
+            },
+        },
+        .transitions_sz = 2,
+        .on_entry = on_entry_green,
+    },
+    {
+        .id = ST_RED,
+        .transitions = {
+            {
+                .event = EV_RED_TIMEOUT,
+                .target_state_id = ST_GRN,
+            },
+            {
+                .event = EV_ERR_DETECTED,
+                .target_state_id = ST_ERR,
+            },
+        },
+        .transitions_sz = 2,
+        .on_entry = on_entry_red,
+    },
+    {
+        .id = ST_YEL,
+        .transitions = {
+            {
+                .event = EV_YEL_TIMEOUT,
+                .target_state_id = ST_RED,
+            },
+            {
+                .event = EV_ERR_DETECTED,
+                .target_state_id = ST_RED,
+            },
+        },
+        .transitions_sz = 2,
+        .on_entry = on_entry_yellow,
+    },
+    {
+        .id = ST_ERR,
+        .transitions = {
+            {
+                .event = EV_ERR_FIXED,
+                .target_state_id = ST_RED,
+            },
+        },
+        .transitions_sz = 1,
+        .on_entry = on_entry_error,
+        .on_exit = on_exit_error,
+    },
+};
 
 int main() {
-    FSM traffic_light_fsm;
-    State states[] = {
-        { .id = ST_GRN, .transitions = { { .event = EV_GRN_TO_YEL, .target_state_id = ST_YEL, } }, .transitions_sz = 1,                                      },
-        { .id = ST_RED, .transitions = { { .event = EV_RED_TO_GRN, .target_state_id = ST_GRN, } }, .transitions_sz = 1, .on_exit  = exiting_red_state_func,  },
-        { .id = ST_YEL, .transitions = { { .event = EV_YEL_TO_RED, .target_state_id = ST_RED, } }, .transitions_sz = 1, .on_entry = entering_yel_state_func, },
-    };
-
+    srand(time(NULL));
     fsm_init(&traffic_light_fsm, states, ARRLEN(states), ST_RED);
-
-    char buf[99];
-    printf("Initial state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
-    sleep(1);
-
-    enum Event ev = EV_RED_TO_GRN;
-    fsm_event(&traffic_light_fsm, ev);
-    printf("Event triggered: %s\n", event_to_str(buf, ev));
-    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
-    sleep(1);
-
-    ev = EV_GRN_TO_YEL;
-    fsm_event(&traffic_light_fsm, ev);
-    printf("Event triggered: %s\n", event_to_str(buf, ev));
-    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
-    sleep(1);
-
-    ev = EV_YEL_TO_RED;
-    fsm_event(&traffic_light_fsm, ev);
-    printf("Event triggered: %s\n", event_to_str(buf, ev));
-    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
-    sleep(1);
 }

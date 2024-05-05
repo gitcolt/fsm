@@ -17,6 +17,7 @@ void fsm_init(FSM *fsm, State *states, size_t states_sz, int initial_state_id) {
         fsm_state->idx = i;
         fsm_state->on_entry = states[i].on_entry;
         fsm_state->on_exit  = states[i].on_exit;
+        fsm_state->transitions_sz = states[i].transitions_sz;
         if (fsm_state->id == initial_state_id)
             fsm->curr_state = fsm_state;
     }
@@ -45,6 +46,9 @@ void fsm_init(FSM *fsm, State *states, size_t states_sz, int initial_state_id) {
             }
         }
     }
+
+    if (fsm->curr_state->on_entry)
+        fsm->curr_state->on_entry(fsm->ctx);
 }
 
 void fsm_event(FSM *fsm, int ev) {
