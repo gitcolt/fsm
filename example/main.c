@@ -12,7 +12,7 @@
 #define LIGHT_TIMEOUT 1
 
 enum State {
-    ST_GRN,
+    ST_GRN = -123, // State IDs can be any value. They don't have to start at 0
     ST_YEL,
     ST_RED,
     ST_ERR,
