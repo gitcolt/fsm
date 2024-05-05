@@ -43,53 +43,43 @@ char *event_to_str(char *dst, enum Event event) {
     return dst;
 }
 
+void exiting_red_state_func() {
+    printf("exiting RED state\n");
+}
+
+void entering_yel_state_func() {
+    printf("entering YELLOW state\n");
+}
+
 int main() {
     FSM traffic_light_fsm;
     State states[] = {
-        {
-            .id = ST_GRN,
-            .transition = {
-                .event = EV_GRN_TO_YEL,
-                .target_state_id = ST_YEL,
-            }
-        },
-        {
-            .id = ST_RED,
-            .transition = {
-                .event = EV_RED_TO_GRN,
-                .target_state_id = ST_GRN,
-            }
-        },
-        {
-            .id = ST_YEL,
-            .transition = {
-                .event = EV_YEL_TO_RED,
-                .target_state_id = ST_RED,
-            }
-        },
+        { .id = ST_GRN, .transition = { .event = EV_GRN_TO_YEL, .target_state_id = ST_YEL, },                                      },
+        { .id = ST_RED, .transition = { .event = EV_RED_TO_GRN, .target_state_id = ST_GRN, }, .on_exit  = exiting_red_state_func,  },
+        { .id = ST_YEL, .transition = { .event = EV_YEL_TO_RED, .target_state_id = ST_RED, }, .on_entry = entering_yel_state_func, },
     };
 
     fsm_init(&traffic_light_fsm, states, ARRLEN(states), ST_RED);
 
     char buf[99];
-    printf("Initial state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state_id));
-    sleep(2);
+    printf("Initial state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
+    sleep(1);
 
     enum Event ev = EV_RED_TO_GRN;
     fsm_event(&traffic_light_fsm, ev);
     printf("Event triggered: %s\n", event_to_str(buf, ev));
-    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state_id));
-    sleep(2);
+    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
+    sleep(1);
 
     ev = EV_GRN_TO_YEL;
     fsm_event(&traffic_light_fsm, ev);
     printf("Event triggered: %s\n", event_to_str(buf, ev));
-    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state_id));
-    sleep(2);
+    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
+    sleep(1);
 
     ev = EV_YEL_TO_RED;
     fsm_event(&traffic_light_fsm, ev);
     printf("Event triggered: %s\n", event_to_str(buf, ev));
-    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state_id));
-    sleep(2);
+    printf("state: %s\n", state_to_str(buf, traffic_light_fsm.curr_state->id));
+    sleep(1);
 }

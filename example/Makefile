@@ -1,5 +1,5 @@
 TARGET = main
-SRCS = main.c
+SRCS = main.c ../fsm.c
 
 .PHONY: all
 all: $(TARGET)
